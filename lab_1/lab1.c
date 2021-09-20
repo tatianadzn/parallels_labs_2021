@@ -52,7 +52,6 @@ void combsort(double a[], int aSize) {
 double find_min_in_sorted_arr(double *sorted_arr, int size) {
     for (int i = 0; i < size; i++) {
         if (sorted_arr[i] != 0) {
-            printf("min is %f", sorted_arr[i]);
             return sorted_arr[i];
         }
     }
@@ -135,7 +134,7 @@ int main(int argc, char *argv[]) {
 
     delta_ms = 1000 * (T2.tv_sec - T1.tv_sec) + (T2.tv_usec - T1.tv_usec) / 1000;
 
-    printf("\nN=%d. Milliseconds passed: %ld\n", N, delta_ms);
+    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
 }
 
