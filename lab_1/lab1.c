@@ -65,7 +65,12 @@ int main(int argc, char *argv[]) {
     struct timeval T1, T2;
     long delta_ms;
 
-    N = atoi(argv[1]); /* N равен первому параметру командной строки */
+    if (argc != 2) {
+        printf("Usage: ./lab1 N\n");
+        printf("N - size of the array; should be greater than 2\n");
+        return 1;
+    }
+    N = atoi(argv[1]);
 
     double *arr1 = malloc(sizeof(double) * N);
     double *arr2 = malloc(sizeof(double) * (N / 2));
