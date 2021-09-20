@@ -17,7 +17,7 @@ void array_copy(const double *original, double *copied, int size) {
     }
 }
 
-/*Combsort: function to find the new gap between the elements*/
+/* Combsort: function to find the new gap between the elements */
 int newgap(int gap) {
     gap = (gap * 10) / 13;
     if (gap == 9 || gap == 10)
@@ -27,7 +27,7 @@ int newgap(int gap) {
     return gap;
 }
 
-/*Combsort: implementation*/
+/* Combsort: implementation */
 void combsort(double a[], int aSize) {
     int gap = aSize;
     double temp;
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < 100; i++) {
         seed = i;
 
-        /* Заполнить массив исходных данных размером N */
+        /* Этап 1. Generate */
         for (int j = 0; j < N; j++) {
             arr1[j] = get_random(&seed, 1, A);
         }
@@ -87,9 +87,7 @@ int main(int argc, char *argv[]) {
             arr2[j] = get_random(&seed, A, A * 10);
         }
 
-
-        /* Решить поставленную задачу, заполнить массив с результатами
-        */
+        /* Этап 2. Map */
         // M1 (e -> hyperbolic cos(e) + 1)
         for (int j = 0; j < N; j++) {
             arr1[j] = cosh(arr1[j]) + 1;
@@ -107,17 +105,16 @@ int main(int argc, char *argv[]) {
             arr2[j] = fabs(1 / tan(arr2[j] + arr2_copy[j]));
         }
 
+        /* Этап 3. Merge */
         // M1, M2 (e1, e2 -> e1 / e2)
-
         for (int j = 0; j < N / 2; j++) {
             arr2[j] = arr1[j] / arr2[j];
         }
 
-
-        /* Отсортировать массив с результатами указанным методом */
+        /* Этап 4. Sort */
         combsort(arr2, N / 2);
 
-        // REDUCE
+        /* Этап 5. Reduce */
         double X = 0;
 
         for (int j = 0; j < N / 2; j++) {
@@ -135,7 +132,6 @@ int main(int argc, char *argv[]) {
     free(arr1);
     free(arr2);
     free(arr2_copy);
-
 
     delta_ms = 1000 * (T2.tv_sec - T1.tv_sec) + (T2.tv_usec - T1.tv_usec) / 1000;
 
