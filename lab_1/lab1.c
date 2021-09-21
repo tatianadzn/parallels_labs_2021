@@ -139,7 +139,8 @@ int main(int argc, char *argv[]) {
 
     delta_ms = 1000 * (T2.tv_sec - T1.tv_sec) + (T2.tv_usec - T1.tv_usec) / 1000;
 
-    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
+    printf("%d,%ld\n", N, delta_ms);
+//    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
 }
 
