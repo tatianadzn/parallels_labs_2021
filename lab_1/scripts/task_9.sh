@@ -15,7 +15,7 @@ echo "N,seq(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-seq $N
+
 done
 
 # 8.2 K=1
@@ -24,7 +24,7 @@ echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-1 $N
+   ../lab1-verification-par-1 $N
 done
 
 # 8.3 K=2
@@ -33,7 +33,7 @@ echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-2 $N
+   ../lab1-verification-par-2 $N
 done
 
 # 8.3 K=4
@@ -42,7 +42,7 @@ echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-4 $N
+   ../lab1-verification-par-4 $N
 done
 
 # 8.4 K=6
@@ -51,7 +51,7 @@ echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-6 $N
+   ../lab1-verification-par-6 $N
 done
 
 # 8.5 K=8
@@ -60,14 +60,14 @@ echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-8 $N
+   ../lab1-verification-par-8 $N
 done
 
 # 8.6 K=3
-echo "K = 3"
+echo "K = 3"v
 echo "N,K(N)"
 for i in {0..10}
 do
   let N=delta*i+N1
-   ../lab1-par-3 $N
+   ../lab1-verification-par-3 $N
 done

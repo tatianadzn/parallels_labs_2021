@@ -1,1 +1,2 @@
-[Отчет лр 1](https://docs.google.com/document/d/1t2y4FX2nLU8C-6IxnaP2ZshCG3FNQ4zXO6NuwtNwrME/edit?usp=sharing) 
+[Отчет лр 1](https://docs.google.com/document/d/1t2y4FX2nLU8C-6IxnaP2ZshCG3FNQ4zXO6NuwtNwrME/edit?usp=sharing) <br>
+[Вспомогательные google sheets](https://docs.google.com/spreadsheets/d/1wYVRLfwyvvZ6wp-xfVPUpxlQGPC_t_H5H-xwAnDdGAw/edit?usp=sharing)
