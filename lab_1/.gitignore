@@ -1,6 +1,3 @@
-lab1-seq
-lab1-par-*
-lab1-verification-seq
-lab1-verification-par-*
+bin/**
 scripts/test.csv
 scripts/X.txt

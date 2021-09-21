@@ -1,10 +1,30 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-gcc -O3 -Wall -Werror -o ../lab1-seq ../lab1.c -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=1 ../lab1.c -o ../lab1-par-1 -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=2 ../lab1.c -o ../lab1-par-2 -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=3 ../lab1.c -o ../lab1-par-3 -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=4 ../lab1.c -o ../lab1-par-4 -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=6 ../lab1.c -o ../lab1-par-6 -lm
-gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=8 ../lab1.c -o ../lab1-par-8 -lm
+# Tasks 3-8
+FILENAME=lab1
+
+# Task 9
+# FILENAME=lab1-verification
+
+WORK_DIR=".."
+OUT_DIR="$WORK_DIR/bin"
+mkdir -p $OUT_DIR
+
+# Compile with Gnu C Compiler
+gcc -O3 -Wall -Werror -o $OUT_DIR/${FILENAME}-gcc-seq $WORK_DIR/${FILENAME}.c -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=1 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-1 -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=2 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-2 -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=3 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-3 -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=4 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-4 -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=6 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-6 -lm
+gcc -O3 -Wall -Werror -floop-parallelize-all -ftree-parallelize-loops=8 $WORK_DIR/${FILENAME}.c -o $OUT_DIR/${FILENAME}-gcc-par-8 -lm
+
+# Compile with Intel C Compiler
+icc -o $OUT_DIR/${FILENAME}-icc-seq $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=1 -o $OUT_DIR/${FILENAME}-icc-par-1 $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=2 -o $OUT_DIR/${FILENAME}-icc-par-2 $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=3 -o $OUT_DIR/${FILENAME}-icc-par-3 $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=4 -o $OUT_DIR/${FILENAME}-icc-par-4 $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=6 -o $OUT_DIR/${FILENAME}-icc-par-6 $WORK_DIR/${FILENAME}.c
+icc -parallel -par-threshold=0 -par-num-threads=8 -o $OUT_DIR/${FILENAME}-icc-par-8 $WORK_DIR/${FILENAME}.c

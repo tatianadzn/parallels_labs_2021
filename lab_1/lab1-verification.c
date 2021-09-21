@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -77,7 +75,7 @@ int main(int argc, char *argv[]) {
     double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
 
 
-    /* 100 экспериментов */
+    /* 5 экспериментов */
     for (i = 0; i < 5; i++) {
         seed = i;
 
@@ -129,7 +127,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("%f\n", X);
+        printf("%d,%d,%f\n", N, i, X);
     }
 
 
