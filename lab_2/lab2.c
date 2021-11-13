@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
-#include <ipps.h>
-#include <ippvm.h>
-#include <ippcore.h>
+#include <fwBase.h>
+#include <fwSignal.h>
 
 double get_random(unsigned int *seed, int min, int max) {
     double random = ((double) rand_r(seed)) / (double) RAND_MAX;
@@ -64,20 +63,24 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
 int main(int argc, char *argv[]) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
-    unsigned int i, N, seed;
+    unsigned int i, N, seed, K;
     struct timeval T1, T2;
     long delta_ms;
 
-    if (argc != 2) {
-        printf("Usage: ./lab1 N\n");
+    if (argc != 3) {
+        printf("Usage: ./lab1 N K\n");
         printf("N - size of the array; should be greater than 2\n");
+        printf("K - number of threads; should be greater than 0\n");
         return 1;
     }
     N = atoi(argv[1]);
+    K = atoi(argv[2]);
 
-    Ipp64f *arr1 = malloc(sizeof(Ipp64f) * N);
-    Ipp64f *arr2 = malloc(sizeof(Ipp64f) * (N / 2));
-    Ipp64f *arr2_copy = malloc(sizeof(Ipp64f) * (N / 2 + 1));
+    fwSetNumThreads(K);
+
+    double *arr1 = malloc(sizeof(double) * N);
+    double *arr2 = malloc(sizeof(double) * (N / 2));
+    double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
 
     gettimeofday(&T1, NULL); /* запомнить текущее время T1 */
 
@@ -97,26 +100,26 @@ int main(int argc, char *argv[]) {
         /* Этап 2. Map */
         /* lab2 - substitute for-loops with vector analogues */
         // M1 (e -> hyperbolic cos(e) + 1)
-        ippsCosh_64f_A50(arr1, arr1, N);
-        ippsAddC_64f(arr1, 1, arr1, N);
+        fwsCosh_64f_A50(arr1, arr1, N);
+        fwsAddC_64f(arr1, 1, arr1, N);
 
         // M2 -> M2_copy   {0, M2[0], M2[1]...}
         // e.g:
         // M2       : 1 2 3 4 5 6
         // M2_copy  : 0 1 2 3 4 5
-        ippsCopy_64f(arr2, arr2_copy+1, N/2);
+        fwsCopy_64f(arr2, arr2_copy+1, N/2);
         arr2_copy[0] = 0;
 
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
-        ippsAdd_64f_I(arr2_copy, arr2, N/2);
-        ippsAtan_64f_A50(arr2, arr2, N/2);
-        ippsAbs_64f(arr2, arr2, N/2);
+        fwsAdd_64f_I(arr2_copy, arr2, N/2);
+        fwsAtan_64f_A50(arr2, arr2, N/2);
+        fwsAbs_64f(arr2, arr2, N/2);
 
         /* Этап 3. Merge */
         /* lab2 - substitute for-loops with vector analogues */
         // M1, M2 (e1, e2 -> e1 / e2)
-        ippsDiv_64f(arr2, arr1, arr2, N/2);
+        fwsDiv_64f(arr2, arr1, arr2, N/2);
 
         /* Этап 4. Sort */
         combsort(arr2, N / 2);

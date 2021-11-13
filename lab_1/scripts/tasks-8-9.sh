@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMPILER="icc"
+COMPILER="gcc"
 
 # Tasks 8
 FILENAME=lab1
@@ -9,8 +9,8 @@ FILENAME=lab1
 # FILENAME=lab1-verification
 
 # Yunir
-N1=2300
-N2=780000
+N1=1300
+N2=600000
 
 let delta=(N2-N1)/10
 

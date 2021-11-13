@@ -20,5 +20,13 @@ Vagrant.configure("2") do |config|
     apt-get install -y intel-basekit intel-hpckit
     echo "source /opt/intel/oneapi/setvars.sh" >> ~/.bashrc
 
+    pushd /tmp
+    wget https://fossies.org/linux/misc/old/FW_1.3.1_Lin64.tar.gz
+    tar xf FW_1.3.1_Lin64.tar.gz --directory=$HOME
+    export FW_HOME=$HOME/FW_1.3.1_Lin64
+    export FW_LIB=$FW_HOME/lib
+    for file in $(ls -1 $FW_LIB); do ln -sf $FW_LIB/$file $FW_LIB/$(echo $file | sed 's/.1.3.1//'); ln -sf $FW_LIB/$file $FW_LIB/$(echo $file | sed 's/.3.1$//'); done
+    export LD_LIBRARY_PATH=$FW_LIB
+    popd
   SHELL
 end
