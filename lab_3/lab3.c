@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
-#include <omp.h>
+
+#ifdef _OPENMP
+#include "omp.h"
+#else
+void omp_set_num_threads(int M) { }
+#endif
 
 double get_random(unsigned int *seed, int min, int max) {
     double random = ((double) rand_r(seed)) / (double) RAND_MAX;
@@ -13,11 +18,13 @@ double get_random(unsigned int *seed, int min, int max) {
 
 void array_copy(const double *original, double *copied, int size) {
     copied[0] = 0;
-
-    #pragma omp parallel for default(none) private(i)
+    //printf("--- map: copy\n");
+    #pragma omp parallel for default(none) shared(size, original, copied)
     for (int i = 0; i < size; i++) {
         copied[i + 1] = original[i];
+        //printf("i=%d copied[i+1]=%f=original[i]=%f\n", i, copied[i+1], original[i]);
     }
+    //printf("...\n");
 }
 
 /* Combsort: function to find the new gap between the elements */
@@ -35,11 +42,9 @@ void combsort(double a[], int aSize) {
     int gap = aSize;
     double temp;
     int i;
-
     for (;;) {
         gap = newgap(gap);
         int swapped = 0;
-
         for (i = 0; i < aSize - gap; i++) {
             int j = i + gap;
             if (a[i] > a[j]) {
@@ -66,22 +71,20 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
 int main(int argc, char *argv[]) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
-    unsigned int i, N, num_threads, schedule_par, chunk_size, seed;
+    unsigned int i, N, num_threads, seed;
     struct timeval T1, T2;
     long delta_ms;
 
-    if (argc != 5) {
-        printf("Usage: ./lab1 N num_threads schedule_par chunk_size\n");
+    if (argc != 3) {
+        printf("Usage: ./lab1 N num_threads\n");
         printf("N - size of the array; should be greater than 2\n");
         printf("num_threads - number of threads\n");
-        printf("schedule_par - 0 for non, 1 for static, 2 for dynamic, 3 for guided\n");
-        printf("chunk_size - parameter for schedule\n");
         return 1;
     }
     N = atoi(argv[1]);
     num_threads = atoi(argv[2]);
-    schedule_par = atoi(argv[3]);
-    chunk_size = atoi(argv[4]);
+
+    omp_set_num_threads(num_threads);
 
     double *arr1 = malloc(sizeof(double) * N);
     double *arr2 = malloc(sizeof(double) * (N / 2));
@@ -90,48 +93,27 @@ int main(int argc, char *argv[]) {
     gettimeofday(&T1, NULL); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    omp_set_num_threads(num_threads)
     for (i = 0; i < 100; i++) {
         seed = i;
 
         /* Этап 1. Generate */
-        #pragma omp parallel for default(none) private(j)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
         for (int j = 0; j < N; j++) {
             arr1[j] = get_random(&seed, 1, A);
         }
 
-        #pragma omp parallel for default(none) private(j)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
         for (int j = 0; j < N / 2; j++) {
             arr2[j] = get_random(&seed, A, A * 10);
         }
 
         /* Этап 2. Map */
         // M1 (e -> hyperbolic cos(e) + 1)
-        #pragma omp parallel for default(none) private(j)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
+        //printf("--- map: hyperbolic cos(e) + 1\n");
+        #pragma omp parallel for default(none) shared(N, arr1)
         for (int j = 0; j < N; j++) {
             arr1[j] = cosh(arr1[j]) + 1;
+            //printf("j=%d arr1[j]=%f\n", j, arr1[j]);
         }
+        //printf("...\n");
 
         // M2 -> M2_copy   {0, M2[0], M2[1]...}
         // e.g:
@@ -141,55 +123,40 @@ int main(int argc, char *argv[]) {
         array_copy(arr2, arr2_copy, N / 2);
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
-        #pragma omp parallel for default(none) private(j)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
+        //printf("--- map: abs(ctg( (e-1)+e )\n");
+        #pragma omp parallel for default(none) shared(N, arr2, arr2_copy)
         for (int j = 0; j < N / 2; j++) {
             arr2[j] = fabs(1 / tan(arr2[j] + arr2_copy[j]));
+            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
         }
+        //printf("...\n");
 
         /* Этап 3. Merge */
         // M1, M2 (e1, e2 -> e1 / e2)
-        #pragma omp parallel for default(none) private(j)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
+        //printf("--- merge: e1 / e2\n");
+        #pragma omp parallel for default(none) shared(N, arr1, arr2)
         for (int j = 0; j < N / 2; j++) {
             arr2[j] = arr1[j] / arr2[j];
+            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
         }
+        //printf("...\n");
 
         /* Этап 4. Sort */
         combsort(arr2, N / 2);
 
         /* Этап 5. Reduce */
         double X = 0;
-
-        #pragma omp parallel for default(none) private(j) shared(X)
-        if (schedule_par == 1) {
-            #pragma omp for schedule(static, chunk_size)
-        } else if (schedule_par == 2) {
-            #pragma omp for schedule(dynamic, chunk_size)
-        } else if (schedule_par == 3) {
-            #pragma omp for schedule(guided, chunk_size)
-        }
+        double min = find_min_in_sorted_arr(arr2, N / 2);
+        if (min == 0) exit(0);
+        //printf("--- reduce: + sin\n");
+        #pragma omp parallel for default(none) shared(N, arr2, min) reduction(+:X)
         for (int j = 0; j < N / 2; j++) {
-            double min = find_min_in_sorted_arr(arr2, N / 2);
-            if (min == 0) exit(0);
-
             if ((int) (arr2[j] / min) % 2 == 0) {
-                #pragma omp critical
                 X += sin(arr2[j]);
             }
         }
+        //printf("X=%f\n", X);
+        //printf("...\n");
     }
 
     gettimeofday(&T2, NULL); /* запомнить текущее время T2 */
