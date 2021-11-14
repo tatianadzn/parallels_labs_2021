@@ -29,3 +29,9 @@ gcc -O3 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=1 -o $OUT_DI
 gcc -O3 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=2 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-2 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
 gcc -O3 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=4 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-4 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
 gcc -O3 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=8 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-8 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
+
+# необязательное задание №2
+gcc -O3 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=1 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-1-optimize-o3 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
+gcc -O2 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=1 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-1-optimize-o2 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
+gcc -O1 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=1 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-1-optimize-o1 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
+gcc -O0 -Wall -Werror -fopenmp -DSCHEDULE_TYPE=guided -DCHUNCK_SIZE=1 -o $OUT_DIR/${FILENAME_SCHEDULE}-openmp-guided-1-optimize-o0 $WORK_DIR/${FILENAME_SCHEDULE}.c -lm
