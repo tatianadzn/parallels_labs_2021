@@ -7,6 +7,12 @@
 #include "omp.h"
 #else
 void omp_set_num_threads(int M) { }
+
+double omp_get_wtime() {
+    struct timeval T1;
+    gettimeofday(&T1, NULL);
+    return (double) T1.tv_sec + (double) T1.tv_usec / 1000000;
+}
 #endif
 
 void generate_array(double *array, int size, unsigned int *seed, int min, int max) {
@@ -78,7 +84,7 @@ int main(int argc, char *argv[]) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
     unsigned int i, N, num_threads, seed;
-    struct timeval T1, T2;
+    double T1, T2;
     long delta_ms;
 
     if (argc != 3) {
@@ -96,10 +102,10 @@ int main(int argc, char *argv[]) {
     double *arr2 = malloc(sizeof(double) * (N / 2));
     double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
 
-    gettimeofday(&T1, NULL); /* запомнить текущее время T1 */
+    T1 = omp_get_wtime(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    for (i = 0; i < 1; i++) {
+    for (i = 0; i < 100; i++) {
         seed = i;
 
         /* Этап 1. Generate */
@@ -160,13 +166,13 @@ int main(int argc, char *argv[]) {
         //printf("...\n");
     }
 
-    gettimeofday(&T2, NULL); /* запомнить текущее время T2 */
+    T2 = omp_get_wtime(); /* запомнить текущее время T2 */
 
     free(arr1);
     free(arr2);
     free(arr2_copy);
 
-    delta_ms = 1000 * (T2.tv_sec - T1.tv_sec) + (T2.tv_usec - T1.tv_usec) / 1000;
+    delta_ms = (T2 - T1) * 1000;
 
     printf("%d,%ld\n", N, delta_ms);
 //    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
