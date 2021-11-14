@@ -3,3 +3,4 @@
 cmake-build-debug/
 lab_*/bin/
 lab_*/scripts/*.csv
+lab_*/scripts/*.log
