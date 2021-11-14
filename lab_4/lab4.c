@@ -5,6 +5,27 @@
 
 #ifdef _OPENMP
 #include "omp.h"
+
+void join_section_arrays(double *res_array, double *array1, int size1, double *array2, int size2) {
+    /*printf("s1 = %d; s2 = %d\n", size1, size2);
+    for(int j = 0; j < size1; j++) {
+        printf("arr1[%d] = %f\n", j, array1[j]);
+    }
+    for(int j = 0; j < size2; j++) {
+        printf("arr2[%d] = %f\n", j, array2[j]);
+    }*/
+    int i1, i2, i_res;
+    i1 = 0;
+    i2 = 0;
+    i_res = 0;
+
+    for(; i1 < size1 && i2 < size2;)
+        if (array1[i1] < array2[i2])    res_array[i_res++] = array1[i1++];
+        else                            res_array[i_res++] = array2[i2++];
+
+    while (i1 < size1)  res_array[i_res++] = array1[i1++];
+    while (i2 < size2)  res_array[i_res++] = array2[i2++];
+}
 #else
 void omp_set_num_threads(int M) { }
 
@@ -51,6 +72,8 @@ int newgap(int gap) {
 
 /* Combsort: implementation */
 void combsort(double a[], int aSize) {
+    /*printf("a[0] = %f\n", a[0]);
+    printf("a[aSize-1] = %f\n", a[aSize-1]);*/
     int gap = aSize;
     double temp;
     int i;
@@ -101,11 +124,14 @@ int main(int argc, char *argv[]) {
     double *arr1 = malloc(sizeof(double) * N);
     double *arr2 = malloc(sizeof(double) * (N / 2));
     double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
+    #ifdef _OPENMP
+        double *arr2_omp = malloc(sizeof(double) * (N / 2));
+    #endif
 
     T1 = omp_get_wtime(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 1; i++) {
         seed = i;
 
         /* Этап 1. Generate */
@@ -149,8 +175,29 @@ int main(int argc, char *argv[]) {
         //printf("...\n");
 
         /* Этап 4. Sort */
-        combsort(arr2, N / 2);
-
+        /*printf("%d %d \n", N, N/2);
+        for(int j = 0; j < N / 2; j++) {
+            printf("arr2[%d] = %f\n", j, arr2[j]);
+        }*/
+        #ifdef _OPENMP
+            /*printf("\n");*/
+            #pragma omp parallel sections
+            {
+                #pragma omp section
+                combsort(arr2, N / 4);
+                #pragma omp section
+                combsort(arr2 + N / 4, N / 2 - N / 4);
+            }
+            join_section_arrays(arr2_omp, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
+            /*for(int j = 0; j < N / 2; j++) {
+                printf("arr2[%d] = %f\n", j, arr2_omp[j]);
+            }*/
+        #else
+            combsort(arr2, N / 2);
+            /*for(int j = 0; j < N / 2; j++) {
+                printf("arr2[%d] = %f\n", j, arr2[j]);
+            }*/
+        #endif
         /* Этап 5. Reduce */
         double X = 0;
         double min = find_min_in_sorted_arr(arr2, N / 2);
@@ -171,6 +218,9 @@ int main(int argc, char *argv[]) {
     free(arr1);
     free(arr2);
     free(arr2_copy);
+    #ifdef _OPENMP
+        free(arr2_omp);
+    #endif
 
     delta_ms = (T2 - T1) * 1000;
 
