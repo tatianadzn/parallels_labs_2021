@@ -4,6 +4,7 @@
 #include <math.h>
 
 #ifdef _OPENMP
+#include <unistd.h>
 #include "omp.h"
 
 void join_section_arrays(double *res_array, double *array1, int size1, double *array2, int size2) {
@@ -25,6 +26,16 @@ void join_section_arrays(double *res_array, double *array1, int size1, double *a
 
     while (i1 < size1)  res_array[i_res++] = array1[i1++];
     while (i2 < size2)  res_array[i_res++] = array2[i2++];
+}
+
+void progress_notifier(int *progress) {
+    int value;
+    for(;;) {
+        value = *progress;
+        printf("progress: %d\n", value);
+        if (value >= 100) break;
+        sleep(1);
+    }
 }
 #else
 void omp_set_num_threads(int M) { }
@@ -103,7 +114,7 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main_logic(int argc, char *argv[], int *progress) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
     unsigned int i, N, num_threads, seed;
@@ -131,7 +142,8 @@ int main(int argc, char *argv[]) {
     T1 = omp_get_wtime(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    for (i = 0; i < 1; i++) {
+    int experiments_count = 100;
+    for (i = 0; i < experiments_count; i++) {
         seed = i;
 
         /* Этап 1. Generate */
@@ -211,6 +223,8 @@ int main(int argc, char *argv[]) {
         }
         //printf("X=%f\n", X);
         //printf("...\n");
+
+        *progress = (100 * (i + 1)) / experiments_count;
     }
 
     T2 = omp_get_wtime(); /* запомнить текущее время T2 */
@@ -227,4 +241,23 @@ int main(int argc, char *argv[]) {
     printf("%d,%ld\n", N, delta_ms);
 //    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
+}
+
+int main(int argc, char *argv[]) {
+    int *progress = malloc(sizeof(int));
+    *progress = 0;
+    #ifdef _OPENMP
+    omp_set_nested(1);
+        #pragma omp parallel sections shared(progress)
+        {
+            #pragma omp section
+            progress_notifier(progress);
+            #pragma omp section
+            main_logic(argc, argv, progress);
+        }
+    #else
+        main_logic(argc, argv, progress);
+    #endif
+    printf("%d\n", *progress);
+    free(progress);
 }
