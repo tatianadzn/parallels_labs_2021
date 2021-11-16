@@ -32,7 +32,7 @@ void progress_notifier(int *progress) {
     int value;
     for(;;) {
         value = *progress;
-        printf("progress: %d\n", value);
+        //printf("progress: %d\n", value);
         if (value >= 100) break;
         sleep(1);
     }
@@ -142,7 +142,7 @@ int main_logic(int argc, char *argv[], int *progress) {
     T1 = omp_get_wtime(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    int experiments_count = 100;
+    int experiments_count = 10;
     for (i = 0; i < experiments_count; i++) {
         seed = i;
 
@@ -258,6 +258,6 @@ int main(int argc, char *argv[]) {
     #else
         main_logic(argc, argv, progress);
     #endif
-    printf("%d\n", *progress);
+    //printf("%d\n", *progress);
     free(progress);
 }
