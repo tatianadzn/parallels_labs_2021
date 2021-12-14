@@ -64,8 +64,6 @@ int main(int argc, char *argv[]) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
     unsigned int i, N, seed, K;
-    struct timeval T1, T2;
-    long delta_ms;
 
     if (argc != 3) {
         printf("Usage: ./lab1 N K\n");
@@ -82,10 +80,8 @@ int main(int argc, char *argv[]) {
     double *arr2 = malloc(sizeof(double) * (N / 2));
     double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
 
-    gettimeofday(&T1, NULL); /* запомнить текущее время T1 */
-
-    /* 100 экспериментов */
-    for (i = 0; i < 100; i++) {
+    /* 5 экспериментов */
+    for (i = 0; i < 5; i++) {
         seed = i;
 
         /* Этап 1. Generate */
@@ -135,18 +131,14 @@ int main(int argc, char *argv[]) {
                 X += sin(arr2[j]);
             }
         }
-    }
 
-    gettimeofday(&T2, NULL); /* запомнить текущее время T2 */
+        printf("%d,%d,%f\n", N, i, X);
+    }
 
     free(arr1);
     free(arr2);
     free(arr2_copy);
 
-    delta_ms = 1000 * (T2.tv_sec - T1.tv_sec) + (T2.tv_usec - T1.tv_usec) / 1000;
-
-    printf("%d,%ld\n", N, delta_ms);
-//    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
 }
 

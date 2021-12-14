@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
-#include <fwBase.h>
-#include <fwSignal.h>
+
+#ifdef _OPENMP
+#include "omp.h"
+#else
+void omp_set_num_threads(int M) { }
+#endif
 
 double get_random(unsigned int *seed, int min, int max) {
     double random = ((double) rand_r(seed)) / (double) RAND_MAX;
@@ -14,9 +18,13 @@ double get_random(unsigned int *seed, int min, int max) {
 
 void array_copy(const double *original, double *copied, int size) {
     copied[0] = 0;
+    //printf("--- map: copy\n");
+    #pragma omp parallel for default(none) shared(size, original, copied) schedule(SCHEDULE_TYPE, CHUNCK_SIZE)
     for (int i = 0; i < size; i++) {
         copied[i + 1] = original[i];
+        //printf("i=%d copied[i+1]=%f=original[i]=%f\n", i, copied[i+1], original[i]);
     }
+    //printf("...\n");
 }
 
 /* Combsort: function to find the new gap between the elements */
@@ -63,20 +71,20 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
 int main(int argc, char *argv[]) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
-    unsigned int i, N, seed, K;
+    unsigned int i, N, num_threads, seed;
     struct timeval T1, T2;
     long delta_ms;
 
     if (argc != 3) {
-        printf("Usage: ./lab1 N K\n");
+        printf("Usage: ./lab1 N num_threads\n");
         printf("N - size of the array; should be greater than 2\n");
-        printf("K - number of threads; should be greater than 0\n");
+        printf("num_threads - number of threads\n");
         return 1;
     }
     N = atoi(argv[1]);
-    K = atoi(argv[2]);
+    num_threads = atoi(argv[2]);
 
-    fwSetNumThreads(K);
+    omp_set_num_threads(num_threads);
 
     double *arr1 = malloc(sizeof(double) * N);
     double *arr2 = malloc(sizeof(double) * (N / 2));
@@ -98,43 +106,57 @@ int main(int argc, char *argv[]) {
         }
 
         /* Этап 2. Map */
-        /* lab2 - substitute for-loops with vector analogues */
         // M1 (e -> hyperbolic cos(e) + 1)
-        fwsCosh_64f_A50(arr1, arr1, N);
-        fwsAddC_64f(arr1, 1, arr1, N);
+        //printf("--- map: hyperbolic cos(e) + 1\n");
+        #pragma omp parallel for default(none) shared(N, arr1) schedule(SCHEDULE_TYPE, CHUNCK_SIZE)
+        for (int j = 0; j < N; j++) {
+            arr1[j] = cosh(arr1[j]) + 1;
+            //printf("j=%d arr1[j]=%f\n", j, arr1[j]);
+        }
+        //printf("...\n");
 
         // M2 -> M2_copy   {0, M2[0], M2[1]...}
         // e.g:
         // M2       : 1 2 3 4 5 6
         // M2_copy  : 0 1 2 3 4 5
-        fwsCopy_64f(arr2, arr2_copy+1, N/2);
-        arr2_copy[0] = 0;
 
+        array_copy(arr2, arr2_copy, N / 2);
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
-        fwsAdd_64f_I(arr2_copy, arr2, N/2);
-        fwsAtan_64f_A50(arr2, arr2, N/2);
-        fwsAbs_64f(arr2, arr2, N/2);
+        //printf("--- map: abs(ctg( (e-1)+e )\n");
+        #pragma omp parallel for default(none) shared(N, arr2, arr2_copy) schedule(SCHEDULE_TYPE, CHUNCK_SIZE)
+        for (int j = 0; j < N / 2; j++) {
+            arr2[j] = fabs(1 / tan(arr2[j] + arr2_copy[j]));
+            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
+        }
+        //printf("...\n");
 
         /* Этап 3. Merge */
-        /* lab2 - substitute for-loops with vector analogues */
         // M1, M2 (e1, e2 -> e1 / e2)
-        fwsDiv_64f(arr2, arr1, arr2, N/2);
+        //printf("--- merge: e1 / e2\n");
+        #pragma omp parallel for default(none) shared(N, arr1, arr2) schedule(SCHEDULE_TYPE, CHUNCK_SIZE)
+        for (int j = 0; j < N / 2; j++) {
+            arr2[j] = arr1[j] / arr2[j];
+            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
+        }
+        //printf("...\n");
 
         /* Этап 4. Sort */
         combsort(arr2, N / 2);
 
         /* Этап 5. Reduce */
         double X = 0;
-
+        double min = find_min_in_sorted_arr(arr2, N / 2);
+        if (min == 0) exit(0);
+        //printf("--- reduce: + sin\n");
+        #pragma omp parallel for default(none) shared(N, arr2, min) reduction(+:X) schedule(SCHEDULE_TYPE, CHUNCK_SIZE)
         for (int j = 0; j < N / 2; j++) {
-            double min = find_min_in_sorted_arr(arr2, N / 2);
-            if (min == 0) exit(0);
-
             if ((int) (arr2[j] / min) % 2 == 0) {
                 X += sin(arr2[j]);
             }
         }
+        //printf("X=%f\n", X);
+        //printf("...\n");
     }
 
     gettimeofday(&T2, NULL); /* запомнить текущее время T2 */
@@ -149,4 +171,3 @@ int main(int argc, char *argv[]) {
 //    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
 }
-
