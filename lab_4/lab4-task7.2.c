@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
+#include <stdint.h>
 
 #ifdef _OPENMP
 #include <unistd.h>
@@ -119,7 +120,6 @@ int main_logic(int argc, char *argv[], int *progress) {
 
     unsigned int i, N, num_threads, seed;
     double T1, T2;
-    long delta_ms;
 
     if (argc != 3) {
         printf("Usage: ./lab1 N num_threads\n");
@@ -139,11 +139,12 @@ int main_logic(int argc, char *argv[], int *progress) {
         double *arr2_omp = malloc(sizeof(double) * (N / 2));
     #endif
 
-    T1 = omp_get_wtime(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
-    int experiments_count = 100;
+    int experiments_count = 10;
+    long *experiments_time = malloc(sizeof(long) * experiments_count);
     for (i = 0; i < experiments_count; i++) {
+        T1 = omp_get_wtime(); /* запомнить текущее время T1 */
         seed = i;
 
         /* Этап 1. Generate */
@@ -225,9 +226,10 @@ int main_logic(int argc, char *argv[], int *progress) {
         //printf("...\n");
 
         *progress = (100 * (i + 1)) / experiments_count;
+        T2 = omp_get_wtime(); /* запомнить текущее время T2 */
+        experiments_time[i] = (T2 - T1) * 1000;
     }
 
-    T2 = omp_get_wtime(); /* запомнить текущее время T2 */
 
     free(arr1);
     free(arr2);
@@ -236,9 +238,14 @@ int main_logic(int argc, char *argv[], int *progress) {
         free(arr2_omp);
     #endif
 
-    delta_ms = (T2 - T1) * 1000;
+    printf("%d", N);
+    for (i = 0; i < experiments_count; i++) {
+        printf(",%ld", experiments_time[i]);
+    }
+    printf("\n");
+    free(experiments_time);
 
-    printf("%d,%ld\n", N, delta_ms);
+//    printf("%d,%ld\n", N, delta_ms);
 //    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
     return 0;
 }
