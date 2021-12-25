@@ -2,6 +2,26 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
+#include <pthread.h>
+#include <unistd.h>
+
+struct main_work_parameters {
+    int N;
+    int num_threads;
+    int* progress;
+};
+
+void *progress_notifier(void *progress_p) {
+    int *progress = (int *) progress_p;
+    int value;
+    for(;;) {
+        value = *progress;
+        printf("progress: %d\n", value);
+        if (value >= 100) break;
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
 
 #ifdef _OPENMP
 #include <unistd.h>
@@ -26,16 +46,6 @@ void join_section_arrays(double *res_array, double *array1, int size1, double *a
 
     while (i1 < size1)  res_array[i_res++] = array1[i1++];
     while (i2 < size2)  res_array[i_res++] = array2[i2++];
-}
-
-void progress_notifier(int *progress) {
-    int value;
-    for(;;) {
-        value = *progress;
-        //printf("progress: %d\n", value);
-        if (value >= 100) break;
-        sleep(1);
-    }
 }
 #else
 void omp_set_num_threads(int M) { }
@@ -122,21 +132,18 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
     return 0;
 }
 
-int main_logic(int argc, char *argv[], int *progress) {
+void *main_logic(void *params_p) {
+    // int argc, char *argv[], int *progress
+    struct main_work_parameters *params = (struct main_work_parameters *) params_p;
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
     unsigned int i, N, num_threads, seed;
     double T1, T2;
     long delta_ms;
 
-    if (argc != 3) {
-        printf("Usage: ./lab1 N num_threads\n");
-        printf("N - size of the array; should be greater than 2\n");
-        printf("num_threads - number of threads\n");
-        return 1;
-    }
-    N = atoi(argv[1]);
-    num_threads = atoi(argv[2]);
+    N = params->N;
+    num_threads = params->num_threads;
+    int* progress = params->progress;
 
     omp_set_num_threads(num_threads);
 
@@ -249,24 +256,30 @@ int main_logic(int argc, char *argv[], int *progress) {
 
     printf("%d,%ld\n", N, delta_ms);
 //    printf("N=%d. Milliseconds passed: %ld\n", N, delta_ms);
-    return 0;
+    pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[]) {
     int *progress = malloc(sizeof(int));
     *progress = 0;
-    #ifdef _OPENMP
-    omp_set_nested(1);
-        #pragma omp parallel sections shared(progress)
-        {
-            #pragma omp section
-            progress_notifier(progress);
-            #pragma omp section
-            main_logic(argc, argv, progress);
-        }
-    #else
-        main_logic(argc, argv, progress);
-    #endif
-    //printf("%d\n", *progress);
+    pthread_t threads[2];
+    struct main_work_parameters params;
+
+    if (argc != 3) {
+        printf("Usage: ./lab5 N num_threads\n");
+        printf("N - size of the array; should be greater than 2\n");
+        printf("num_threads - number of threads\n");
+        return 1;
+    }
+    params.N = atoi(argv[1]);
+    params.num_threads = atoi(argv[2]);
+    params.progress = progress;
+
+    pthread_create(&threads[0], NULL, progress_notifier, progress);
+    pthread_create(&threads[1], NULL, main_logic, &params);
+
+    pthread_join(threads[0], NULL);
+    pthread_join(threads[1], NULL);
+
     free(progress);
 }
