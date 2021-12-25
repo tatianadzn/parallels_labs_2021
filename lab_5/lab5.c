@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-struct main_work_parameters {
+struct main_logic_parameters {
     int N;
     int num_threads;
     int* progress;
@@ -16,15 +16,20 @@ void *progress_notifier(void *progress_p) {
     int value;
     for(;;) {
         value = *progress;
-        printf("progress: %d\n", value);
+        // printf("progress: %d\n", value);
         if (value >= 100) break;
         sleep(1);
     }
     pthread_exit(NULL);
 }
 
+double get_time() {
+    struct timeval T1;
+    gettimeofday(&T1, NULL);
+    return (double) T1.tv_sec + (double) T1.tv_usec / 1000000;
+}
+
 #ifdef _OPENMP
-#include <unistd.h>
 #include "omp.h"
 
 void join_section_arrays(double *res_array, double *array1, int size1, double *array2, int size2) {
@@ -46,14 +51,6 @@ void join_section_arrays(double *res_array, double *array1, int size1, double *a
 
     while (i1 < size1)  res_array[i_res++] = array1[i1++];
     while (i2 < size2)  res_array[i_res++] = array2[i2++];
-}
-#else
-void omp_set_num_threads(int M) { }
-
-double omp_get_wtime() {
-    struct timeval T1;
-    gettimeofday(&T1, NULL);
-    return (double) T1.tv_sec + (double) T1.tv_usec / 1000000;
 }
 #endif
 
@@ -133,28 +130,24 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
 }
 
 void *main_logic(void *params_p) {
-    // int argc, char *argv[], int *progress
-    struct main_work_parameters *params = (struct main_work_parameters *) params_p;
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
-    unsigned int i, N, num_threads, seed;
+    unsigned int i, N, seed;
     double T1, T2;
     long delta_ms;
 
+    // int argc, char *argv[], int *progress
+    struct main_logic_parameters *params = (struct main_logic_parameters *) params_p;
     N = params->N;
-    num_threads = params->num_threads;
+    // unsigned num_threads = params->num_threads;
     int* progress = params->progress;
-
-    omp_set_num_threads(num_threads);
 
     double *arr1 = malloc(sizeof(double) * N);
     double *arr2 = malloc(sizeof(double) * (N / 2));
     double *arr2_copy = malloc(sizeof(double) * (N / 2 + 1));
-    #ifdef _OPENMP
-        double *arr2_omp = malloc(sizeof(double) * (N / 2));
-    #endif
+    double *arr2_sorted = malloc(sizeof(double) * (N / 2));
 
-    T1 = omp_get_wtime(); /* запомнить текущее время T1 */
+    T1 = get_time(); /* запомнить текущее время T1 */
 
     /* 100 экспериментов */
     int experiments_count = 100;
@@ -215,10 +208,10 @@ void *main_logic(void *params_p) {
                 #pragma omp section
                 combsort(arr2 + N / 4, N / 2 - N / 4);
             }
-            join_section_arrays(arr2_omp, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
-            a_copy(arr2_omp, arr2, N / 2);
+            join_section_arrays(arr2_sorted, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
+            a_copy(arr2_sorted, arr2, N / 2);
             /*for(int j = 0; j < N / 2; j++) {
-                printf("arr2[%d] = %f\n", j, arr2_omp[j]);
+                printf("arr2[%d] = %f\n", j, arr2_sorted[j]);
             }*/
         #else
             combsort(arr2, N / 2);
@@ -243,14 +236,12 @@ void *main_logic(void *params_p) {
         *progress = (100 * (i + 1)) / experiments_count;
     }
 
-    T2 = omp_get_wtime(); /* запомнить текущее время T2 */
+    T2 = get_time(); /* запомнить текущее время T2 */
 
     free(arr1);
     free(arr2);
     free(arr2_copy);
-    #ifdef _OPENMP
-        free(arr2_omp);
-    #endif
+    free(arr2_sorted);
 
     delta_ms = (T2 - T1) * 1000;
 
@@ -263,7 +254,7 @@ int main(int argc, char *argv[]) {
     int *progress = malloc(sizeof(int));
     *progress = 0;
     pthread_t threads[2];
-    struct main_work_parameters params;
+    struct main_logic_parameters params;
 
     if (argc != 3) {
         printf("Usage: ./lab5 N num_threads\n");
