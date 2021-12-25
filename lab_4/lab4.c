@@ -71,6 +71,14 @@ void array_copy(const double *original, double *copied, int size) {
     //printf("...\n");
 }
 
+void a_copy(const double *original, double *copied, int size) {
+#pragma omp parallel for default(none) shared(size, original, copied)
+    for (int i = 0; i < size; i++) {
+        copied[i] = original[i];
+        //printf("i=%d copied[i+1]=%f=original[i]=%f\n", i, copied[i+1], original[i]);
+    }
+}
+
 /* Combsort: function to find the new gap between the elements */
 int newgap(int gap) {
     gap = (gap * 10) / 13;
@@ -201,6 +209,7 @@ int main_logic(int argc, char *argv[], int *progress) {
                 combsort(arr2 + N / 4, N / 2 - N / 4);
             }
             join_section_arrays(arr2_omp, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
+            a_copy(arr2_omp, arr2, N / 2);
             /*for(int j = 0; j < N / 2; j++) {
                 printf("arr2[%d] = %f\n", j, arr2_omp[j]);
             }*/
