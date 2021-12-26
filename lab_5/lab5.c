@@ -37,6 +37,13 @@ struct copy_parameters {
     struct thread_params thread_p;
 };
 
+struct map_two_parameters {
+    unsigned int N;
+    double *arr2;
+    double *arr2_copy;
+    struct thread_params thread_p;
+};
+
 void *progress_notifier(void *progress_p) {
     int *progress = (int *) progress_p;
     int value;
@@ -143,7 +150,7 @@ void *a_copy_pthread(void *params) {
         for (int i = 0; j+i < size && i < chunk; ++i) {
             int next = j + i;
             copied[next] = original[next];
-            printf("tid=%d i=%d copied[i]=%f=original[i]=%f\n", tid, next, copied[next], original[next]);
+            // printf("tid=%d i=%d copied[i]=%f=original[i]=%f\n", tid, next, copied[next], original[next]);
         }
     }
     //printf("...\n");
@@ -227,6 +234,27 @@ void *map_pthreads(void *params) {
     pthread_exit(NULL);
 }
 
+void *map_two_pthreads(void *params) {
+    struct map_two_parameters *p = (struct map_two_parameters*) params;
+    unsigned int N = p->N;
+    double *arr2 = p->arr2;
+    double *arr2_copy = p->arr2_copy;
+    int chunk = p->thread_p.chunk_size;
+    int tid = p->thread_p.thr_id;
+    int num_threads = p->thread_p.num_threads;
+
+    for (int j = tid*chunk; j < N; j+=num_threads*chunk) {
+        for (int i = 0; j+i < N && i < chunk; ++i) {
+            int next = j + i;
+            arr2[next] = fabs(1 / tan(arr2[next] + arr2_copy[next]));
+            // printf("tid=%d j=%d arr2[j]=%f\n",tid, next, arr2[next]);
+        }
+    }
+    //printf("...\n");
+    pthread_exit(NULL);
+}
+
+
 void *main_logic(void *params_p) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
@@ -279,13 +307,18 @@ void *main_logic(void *params_p) {
         a_copy(arr2, arr2_copy + 1, N / 2, num_threads);
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
-        //printf("--- map: abs(ctg( (e-1)+e )\n");
-        #pragma omp parallel for default(none) shared(N, arr2, arr2_copy)
-        for (int j = 0; j < N / 2; j++) {
-            arr2[j] = fabs(1 / tan(arr2[j] + arr2_copy[j]));
-            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
+        struct map_two_parameters mp_t[num_threads];
+        pthread_t threads_two[num_threads];
+        for (int j = 0; j < num_threads; ++j) {
+            mp_t[j].N = N / 2;
+            mp_t[j].arr2 = arr2;
+            mp_t[j].arr2_copy = arr2_copy;
+            mp_t[j].thread_p.chunk_size = N / 2 / num_threads;
+            mp_t[j].thread_p.thr_id = j;
+            mp_t[j].thread_p.num_threads = num_threads;
+            pthread_create(&threads_two[j], NULL, map_two_pthreads, &mp_t[j]);
         }
-        //printf("...\n");
+        for (int j = 0; j < num_threads; ++j) pthread_join(threads_two[j], NULL);
 
         /* Этап 3. Merge */
         // M1, M2 (e1, e2 -> e1 / e2)
