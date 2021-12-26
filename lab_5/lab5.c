@@ -11,6 +11,14 @@ struct main_logic_parameters {
     int* progress;
 };
 
+struct map_parameters {
+    unsigned int array_size;
+    double *array;
+    int chunk_size;
+    int thr_id;
+    int num_threads;
+};
+
 void *progress_notifier(void *progress_p) {
     int *progress = (int *) progress_p;
     int value;
@@ -166,6 +174,25 @@ double find_min_in_sorted_arr(double *sorted_arr, int size) {
     return 0;
 }
 
+void *map_pthreads(void *params) {
+    struct map_parameters *p = (struct map_parameters*) params;
+    unsigned int N = p->array_size;
+    double *arr1 = p->array;
+    int chunk = p->chunk_size;
+    int tid = p->thr_id;
+    int num_threads = p->num_threads;
+
+    for (int j = tid*chunk; j < N; j+=num_threads*chunk) {
+        for (int i = 0; j+i < N && i < chunk; ++i) {
+            int next = j + i;
+            arr1[next] = cosh(arr1[next]) + 1;
+            //printf("tid=%d j=%d arr1[j]=%f\n", tid, next, arr1[next]);
+        }
+    }
+    //printf("...\n");
+    pthread_exit(NULL);
+}
+
 void *main_logic(void *params_p) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
@@ -198,12 +225,17 @@ void *main_logic(void *params_p) {
         /* Этап 2. Map */
         // M1 (e -> hyperbolic cos(e) + 1)
         //printf("--- map: hyperbolic cos(e) + 1\n");
-        #pragma omp parallel for default(none) shared(N, arr1)
-        for (int j = 0; j < N; j++) {
-            arr1[j] = cosh(arr1[j]) + 1;
-            //printf("j=%d arr1[j]=%f\n", j, arr1[j]);
+        struct map_parameters mp[num_threads];
+        pthread_t threads[num_threads];
+        for (int j = 0; j < num_threads; ++j) {
+            mp[j].array = arr1;
+            mp[j].array_size = N;
+            mp[j].chunk_size = N / num_threads;
+            mp[j].thr_id = j;
+            mp[j].num_threads = num_threads;
+            pthread_create(&threads[j], NULL, map_pthreads, &mp[j]);
         }
-        //printf("...\n");
+        for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
 
         // M2 -> M2_copy   {0, M2[0], M2[1]...}
         // e.g:
