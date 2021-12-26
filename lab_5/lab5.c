@@ -115,17 +115,6 @@ void generate_array_pthreads(
     for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
 }
 
-void array_copy(const double *original, double *copied, int size) {
-    copied[0] = 0;
-    //printf("--- map: copy\n");
-    #pragma omp parallel for default(none) shared(size, original, copied)
-    for (int i = 0; i < size; i++) {
-        copied[i + 1] = original[i];
-        //printf("i=%d copied[i+1]=%f=original[i]=%f\n", i, copied[i+1], original[i]);
-    }
-    //printf("...\n");
-}
-
 void a_copy(const double *original, double *copied, int size) {
     #pragma omp parallel for default(none) shared(size, original, copied)
     for (int i = 0; i < size; i++) {
@@ -220,8 +209,8 @@ void *main_logic(void *params_p) {
         // e.g:
         // M2       : 1 2 3 4 5 6
         // M2_copy  : 0 1 2 3 4 5
-
-        array_copy(arr2, arr2_copy, N / 2);
+        arr2_copy[0] = 0;
+        a_copy(arr2, arr2_copy + 1, N / 2);
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
         //printf("--- map: abs(ctg( (e-1)+e )\n");
