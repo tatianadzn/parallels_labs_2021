@@ -32,6 +32,11 @@ struct generate_array_params {
     struct thread_params thread_p;
 };
 
+struct copy_parameters {
+    double *original; double *copied; int size;
+    struct thread_params thread_p;
+};
+
 void *progress_notifier(void *progress_p) {
     int *progress = (int *) progress_p;
     int value;
@@ -125,12 +130,39 @@ void generate_array_pthreads(
     for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
 }
 
-void a_copy(const double *original, double *copied, int size) {
-    #pragma omp parallel for default(none) shared(size, original, copied)
-    for (int i = 0; i < size; i++) {
-        copied[i] = original[i];
-        //printf("i=%d copied[i+1]=%f=original[i]=%f\n", i, copied[i+1], original[i]);
+void *a_copy_pthread(void *params) {
+    struct copy_parameters *p = (struct copy_parameters*) params;
+    double *original = p->original;
+    double *copied = p->copied;
+    int size = p->size;
+    int chunk = p->thread_p.chunk_size;
+    int tid = p->thread_p.thr_id;
+    int num_threads = p->thread_p.num_threads;
+
+    for (int j = tid*chunk; j < size; j+=num_threads*chunk) {
+        for (int i = 0; j+i < size && i < chunk; ++i) {
+            int next = j + i;
+            copied[next] = original[next];
+            printf("tid=%d i=%d copied[i]=%f=original[i]=%f\n", tid, next, copied[next], original[next]);
+        }
     }
+    //printf("...\n");
+    pthread_exit(NULL);
+}
+
+void a_copy(double *original, double *copied, int size, int num_threads) {
+    struct copy_parameters mp[num_threads];
+    pthread_t threads[num_threads];
+    for (int j = 0; j < num_threads; ++j) {
+        mp[j].original = original;
+        mp[j].copied = copied;
+        mp[j].size = size;
+        mp[j].thread_p.chunk_size = size / num_threads;
+        mp[j].thread_p.thr_id = j;
+        mp[j].thread_p.num_threads = num_threads;
+        pthread_create(&threads[j], NULL, a_copy_pthread, &mp[j]);
+    }
+    for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
 }
 
 /* Combsort: function to find the new gap between the elements */
@@ -244,7 +276,7 @@ void *main_logic(void *params_p) {
         // M2       : 1 2 3 4 5 6
         // M2_copy  : 0 1 2 3 4 5
         arr2_copy[0] = 0;
-        a_copy(arr2, arr2_copy + 1, N / 2);
+        a_copy(arr2, arr2_copy + 1, N / 2, num_threads);
 
         // M2 (e -> abs(ctg( (e-1)+e )) )
         //printf("--- map: abs(ctg( (e-1)+e )\n");
@@ -280,7 +312,7 @@ void *main_logic(void *params_p) {
                 combsort(arr2 + N / 4, N / 2 - N / 4);
             }
             join_section_arrays(arr2_sorted, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
-            a_copy(arr2_sorted, arr2, N / 2);
+            a_copy(arr2_sorted, arr2, N / 2, num_threads);
             /*for(int j = 0; j < N / 2; j++) {
                 printf("arr2[%d] = %f\n", j, arr2_sorted[j]);
             }*/
