@@ -254,6 +254,25 @@ void *map_two_pthreads(void *params) {
     pthread_exit(NULL);
 }
 
+void *merge_pthreads(void *params) {
+    struct map_two_parameters *p = (struct map_two_parameters*) params;
+    unsigned int N = p->N;
+    double *arr2 = p->arr2;
+    double *arr2_copy = p->arr2_copy;
+    int chunk = p->thread_p.chunk_size;
+    int tid = p->thread_p.thr_id;
+    int num_threads = p->thread_p.num_threads;
+
+    for (int j = tid*chunk; j < N; j+=num_threads*chunk) {
+        for (int i = 0; j+i < N && i < chunk; ++i) {
+            int next = j + i;
+            arr2_copy[next] = arr2[next] / arr2_copy[next];
+            // printf("tid=%d j=%d arr2[j]=%f\n", tid, j, arr2[j]);
+        }
+    }
+    //printf("...\n");
+    pthread_exit(NULL);
+}
 
 void *main_logic(void *params_p) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
@@ -322,13 +341,12 @@ void *main_logic(void *params_p) {
 
         /* Этап 3. Merge */
         // M1, M2 (e1, e2 -> e1 / e2)
-        //printf("--- merge: e1 / e2\n");
-        #pragma omp parallel for default(none) shared(N, arr1, arr2)
-        for (int j = 0; j < N / 2; j++) {
-            arr2[j] = arr1[j] / arr2[j];
-            //printf("j=%d arr2[j]=%f\n", j, arr2[j]);
+        for (int j = 0; j < num_threads; ++j) {
+            mp_t[j].arr2 = arr1;
+            mp_t[j].arr2_copy = arr2;
+            pthread_create(&threads_two[j], NULL, merge_pthreads, &mp_t[j]);
         }
-        //printf("...\n");
+        for (int j = 0; j < num_threads; ++j) pthread_join(threads_two[j], NULL);
 
         /* Этап 4. Sort */
         /*printf("%d %d \n", N, N/2);
