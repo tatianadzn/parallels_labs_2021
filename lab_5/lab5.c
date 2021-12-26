@@ -11,12 +11,25 @@ struct main_logic_parameters {
     int* progress;
 };
 
-struct map_parameters {
-    unsigned int array_size;
-    double *array;
+struct thread_params {
     int chunk_size;
     int thr_id;
     int num_threads;
+};
+
+struct map_parameters {
+    unsigned int array_size;
+    double *array;
+    struct thread_params thread_p;
+};
+
+struct generate_array_params {
+    double *array;
+    int size;
+    unsigned int *seed;
+    int min;
+    int max;
+    struct thread_params thread_p;
 };
 
 void *progress_notifier(void *progress_p) {
@@ -62,17 +75,6 @@ void join_section_arrays(double *res_array, double *array1, int size1, double *a
 }
 #endif
 
-struct generate_array_params {
-    double *array;
-    int size;
-    unsigned int *seed;
-    int min;
-    int max;
-    int chunk_size;
-    int thr_id;
-    int num_threads;
-};
-
 void *generate_array(void *gen_arr_params_v) {
     struct generate_array_params *gen_arr_params = (struct generate_array_params*) gen_arr_params_v;
     double *array = gen_arr_params->array;
@@ -80,9 +82,9 @@ void *generate_array(void *gen_arr_params_v) {
     unsigned int *seed = gen_arr_params->seed;
     int min = gen_arr_params->min;
     int max = gen_arr_params->max;
-    int chunk = gen_arr_params->chunk_size;
-    int tid = gen_arr_params->thr_id;
-    int num_threads = gen_arr_params->num_threads;
+    int chunk = gen_arr_params->thread_p.chunk_size;
+    int tid = gen_arr_params->thread_p.thr_id;
+    int num_threads = gen_arr_params->thread_p.num_threads;
 
     for (int j = tid*chunk; j < size; j+=num_threads*chunk) {
         for (int i = 0; j+i < size && i < chunk; ++i) {
@@ -115,9 +117,9 @@ void generate_array_pthreads(
         gen_arr_params[j].seed = seed;
         gen_arr_params[j].min = min;
         gen_arr_params[j].max = max;
-        gen_arr_params[j].chunk_size = chunk_size;
-        gen_arr_params[j].thr_id = j;
-        gen_arr_params[j].num_threads = num_threads;
+        gen_arr_params[j].thread_p.chunk_size = chunk_size;
+        gen_arr_params[j].thread_p.thr_id = j;
+        gen_arr_params[j].thread_p.num_threads = num_threads;
         pthread_create(&threads[j], NULL, generate_array, &gen_arr_params[j]);
     }
     for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
@@ -178,9 +180,9 @@ void *map_pthreads(void *params) {
     struct map_parameters *p = (struct map_parameters*) params;
     unsigned int N = p->array_size;
     double *arr1 = p->array;
-    int chunk = p->chunk_size;
-    int tid = p->thr_id;
-    int num_threads = p->num_threads;
+    int chunk = p->thread_p.chunk_size;
+    int tid = p->thread_p.thr_id;
+    int num_threads = p->thread_p.num_threads;
 
     for (int j = tid*chunk; j < N; j+=num_threads*chunk) {
         for (int i = 0; j+i < N && i < chunk; ++i) {
@@ -230,9 +232,9 @@ void *main_logic(void *params_p) {
         for (int j = 0; j < num_threads; ++j) {
             mp[j].array = arr1;
             mp[j].array_size = N;
-            mp[j].chunk_size = N / num_threads;
-            mp[j].thr_id = j;
-            mp[j].num_threads = num_threads;
+            mp[j].thread_p.chunk_size = N / num_threads;
+            mp[j].thread_p.thr_id = j;
+            mp[j].thread_p.num_threads = num_threads;
             pthread_create(&threads[j], NULL, map_pthreads, &mp[j]);
         }
         for (int j = 0; j < num_threads; ++j) pthread_join(threads[j], NULL);
