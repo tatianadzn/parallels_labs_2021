@@ -44,6 +44,11 @@ struct map_two_parameters {
     struct thread_params thread_p;
 };
 
+struct sort_params {
+    double *arr;
+    unsigned int size;
+};
+
 void *progress_notifier(void *progress_p) {
     int *progress = (int *) progress_p;
     int value;
@@ -61,9 +66,6 @@ double get_time() {
     gettimeofday(&T1, NULL);
     return (double) T1.tv_sec + (double) T1.tv_usec / 1000000;
 }
-
-#ifdef _OPENMP
-#include "omp.h"
 
 void join_section_arrays(double *res_array, double *array1, int size1, double *array2, int size2) {
     /*printf("s1 = %d; s2 = %d\n", size1, size2);
@@ -85,7 +87,6 @@ void join_section_arrays(double *res_array, double *array1, int size1, double *a
     while (i1 < size1)  res_array[i_res++] = array1[i1++];
     while (i2 < size2)  res_array[i_res++] = array2[i2++];
 }
-#endif
 
 void *generate_array(void *gen_arr_params_v) {
     struct generate_array_params *gen_arr_params = (struct generate_array_params*) gen_arr_params_v;
@@ -204,6 +205,16 @@ void combsort(double a[], int aSize) {
         if (gap == 1 && !swapped)
             break;
     }
+}
+
+void *combsort_pthreads(void *params) {
+    struct sort_params *p = (struct sort_params*) params;
+    double *arr = p->arr;
+    int size = p->size;
+
+    combsort(arr, size);
+
+    pthread_exit(NULL);
 }
 
 double find_min_in_sorted_arr(double *sorted_arr, int size) {
@@ -352,27 +363,24 @@ void *main_logic(void *params_p) {
         /*printf("%d %d \n", N, N/2);
         for(int j = 0; j < N / 2; j++) {
             printf("arr2[%d] = %f\n", j, arr2[j]);
+        }
+        printf("\n");*/
+        pthread_t threads_sort[2];
+        struct sort_params sp[2];
+        sp[0].arr = arr2;
+        sp[0].size = N / 4;
+        pthread_create(&threads_sort[0], NULL, combsort_pthreads, &sp[0]);
+        sp[1].arr = arr2 + N / 4;
+        sp[1].size = N / 2 - N / 4;
+        pthread_create(&threads_sort[1], NULL, combsort_pthreads, &sp[1]);
+        pthread_join(threads_sort[0], NULL);
+        pthread_join(threads_sort[1], NULL);
+        join_section_arrays(arr2_sorted, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
+        a_copy(arr2_sorted, arr2, N / 2, num_threads);
+        /*for(int j = 0; j < N / 2; j++) {
+            printf("arr2[%d] = %f\n", j, arr2[j]);
         }*/
-        #ifdef _OPENMP
-            /*printf("\n");*/
-            #pragma omp parallel sections
-            {
-                #pragma omp section
-                combsort(arr2, N / 4);
-                #pragma omp section
-                combsort(arr2 + N / 4, N / 2 - N / 4);
-            }
-            join_section_arrays(arr2_sorted, arr2, N / 4, arr2 + N / 4, N / 2 - N / 4);
-            a_copy(arr2_sorted, arr2, N / 2, num_threads);
-            /*for(int j = 0; j < N / 2; j++) {
-                printf("arr2[%d] = %f\n", j, arr2_sorted[j]);
-            }*/
-        #else
-            combsort(arr2, N / 2);
-            /*for(int j = 0; j < N / 2; j++) {
-                printf("arr2[%d] = %f\n", j, arr2[j]);
-            }*/
-        #endif
+
         /* Этап 5. Reduce */
         double X = 0;
         double min = find_min_in_sorted_arr(arr2, N / 2);
