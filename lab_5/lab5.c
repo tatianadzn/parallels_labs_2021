@@ -49,6 +49,15 @@ struct sort_params {
     unsigned int size;
 };
 
+struct reduce_parameters {
+    unsigned int N;
+    double *arr2;
+    double min;
+    double res;
+    struct thread_params thread_p;
+};
+
+
 void *progress_notifier(void *progress_p) {
     int *progress = (int *) progress_p;
     int value;
@@ -285,6 +294,29 @@ void *merge_pthreads(void *params) {
     pthread_exit(NULL);
 }
 
+void *reduce_pthreads(void *params) {
+    struct reduce_parameters *p = (struct reduce_parameters*) params;
+    unsigned int N = p->N;
+    double *arr2 = p->arr2;
+    double min = p->min;
+    double res = p->res;
+    int chunk = p->thread_p.chunk_size;
+    int tid = p->thread_p.thr_id;
+    int num_threads = p->thread_p.num_threads;
+
+    for (int j = tid*chunk; j < N; j+=num_threads*chunk) {
+        for (int i = 0; j+i < N && i < chunk; ++i) {
+            int next = j + i;
+            if ((int) (arr2[next] / min) % 2 == 0) {
+                res += sin(arr2[next]);
+            }
+        }
+    }
+    // printf("tid=%d res=%f\n", tid, res);
+    p->res = res;
+    pthread_exit(NULL);
+}
+
 void *main_logic(void *params_p) {
     const int A = 8 * 7 * 10; // Дзензура Татьяна Михайловна
 
@@ -385,16 +417,23 @@ void *main_logic(void *params_p) {
         double X = 0;
         double min = find_min_in_sorted_arr(arr2, N / 2);
         if (min == 0) exit(0);
-        //printf("--- reduce: + sin\n");
-        #pragma omp parallel for default(none) shared(N, arr2, min) reduction(+:X)
-        for (int j = 0; j < N / 2; j++) {
-            if ((int) (arr2[j] / min) % 2 == 0) {
-                X += sin(arr2[j]);
-            }
+        struct reduce_parameters rp[num_threads];
+        pthread_t rp_threads[num_threads];
+        for (int j = 0; j < num_threads; ++j) {
+            rp[j].N = N / 2;
+            rp[j].arr2 = arr2;
+            rp[j].min = min;
+            rp[j].res = 0;
+            rp[j].thread_p.chunk_size = N / 2 / num_threads;
+            rp[j].thread_p.thr_id = j;
+            rp[j].thread_p.num_threads = num_threads;
+            pthread_create(&rp_threads[j], NULL, reduce_pthreads, &rp[j]);
         }
-        //printf("X=%f\n", X);
-        //printf("...\n");
-
+        for (int j = 0; j < num_threads; ++j) {
+            pthread_join(rp_threads[j], NULL);
+            X += rp[j].res;
+        }
+        // printf("res=%f\n", X);
         *progress = (100 * (i + 1)) / experiments_count;
     }
 
